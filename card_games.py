@@ -3,6 +3,7 @@ __author__ = 'steven synan'
 import random
 from itertools import groupby
 from abc import ABCMeta, abstractmethod
+import sqlite3 as sql
 
 
 #######################################################################################################################
@@ -407,7 +408,8 @@ class VideoPoker(Game):
 class Session(object):
     @staticmethod
     def begin():
-        player = CardPlayer('0', 'Jackie', 1)
+        name = input("Welcome! What's your name? ")
+        player = SQLiteDB.get_player(name)
         game = VideoPoker(player, 1, 5)
         poker_loop = VideoPokerLoop(game)
         poker_loop.initialize()
@@ -468,26 +470,23 @@ class VideoPokerLoop(GameLoop):
 
 
 class SQLiteDB(object):
-    def __init__(self, connection):  # this is SQLite, connection is just a path to the SQLite DB file.
-        self.connection = connection
-
-    def GetPlayer(self, name):
+    @staticmethod
+    def get_player(name):
+        name = (name, )
+        select_sql = "SELECT * FROM Players WHERE FirstName=?"
+        player_raw = SQLiteDB.__execute_select__(select_sql, name)
+        if player_raw:
+            player = CardPlayer(player_raw[0], player_raw[1], player_raw[2])
+            return player
         pass
 
-    def __build_db__(self):
-        """WARNING! This method will destroy everything in the DB and rebuild it from scratch!"""
-        self.__rebuild_user_table__()
-        self.__rebuild_user_stats_table__()
-        self.__rebuild_user_settings_table__()
-        return None
-
-    def __rebuild_user_table__(self):
-        pass
-
-    def __rebuild_user_stats_table__(self):
-        pass
-
-    def __rebuild_user_settings_table__(self):
+    @staticmethod
+    def __execute_select__(select_sql, params, return_one_row=True):
+        conn = sql.connect('DB/LootersCasino.db')
+        with conn:
+            cur = conn.cursor()
+            cur.execute(select_sql, params)
+            return cur.fetchone()
         pass
 
 
