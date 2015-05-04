@@ -167,6 +167,10 @@ class Player(object):
     def gil(self):
         return self.__gil
 
+    @gil.setter
+    def gil(self, value):
+        self.__gil = value
+
     def __init__(self, player_id, name, gil):
         self.__player_id = player_id
         self.__name = name
@@ -176,7 +180,7 @@ class Player(object):
 class CardPlayer(Player):
     def __init__(self, player_id, name, gil):
         super().__init__(player_id, name, gil)
-        self.hand = hand = []
+        self.hand = []
 
     def give_cards(self, cards):
         self.hand = self.hand + cards
@@ -378,14 +382,20 @@ class Game(object):
         pass
 
 
+# TODO: Refactor VideoPoker, it's doing too much. Right now it's just hacked enough together to do stuff.
+
+# this is all pretty crude right now.
+
 class VideoPoker(Game):
     def __init__(self, player, min_credits, max_credits):
         super().__init__(player, min_credits, max_credits)
         self.deck = Deck.build()
         self.current_turn = 0  # No turn numbers on init. Players get 2 turns max for each game
+        self.player_credits = 0  # kinda gross here...
 
     def new_game(self, player_credits):
         self.current_turn = 1
+        self.player_credits = player_credits
         self.deck = Deck.build()
         hand = Deck.deal(self.deck, 5)
         for card in hand:
@@ -405,11 +415,39 @@ class VideoPoker(Game):
                     super().player.hand[index] = Deck.deal(self.deck, 1)[0]
             VideoPokerConsoleRenderer.show_cards(super().player.hand)
             evaluation = PokerRules.evaluate_hand(super().player.hand)
-            self._calculate_winnings_(evaluation)
+            winnings = self.__calculate_winnings__(evaluation)
+            if winnings > 0:
+                print(str.format('\n{}\nYou win {} credits.', evaluation[1], winnings))
+                super().player.gil = winnings
+            else:
+                super().player.gil -= self.player_credits
             self.current_turn = 2
 
-    def _calculate_winnings_(self, evaluation):
-        pass
+    def __calculate_winnings__(self, evaluation):
+        # more testing for hand evaluations... hmm...
+        total_winnings = 0
+        evaluation_val = evaluation[0]
+        if evaluation_val == HandEvaluation.royal_flush:
+            total_winnings += self.player_credits * VideoPokerBaseWinnings.royal_flush
+        elif evaluation_val == HandEvaluation.straight_flush:
+            total_winnings += self.player_credits * VideoPokerBaseWinnings.straight_flush
+        elif evaluation_val == HandEvaluation.four_of_a_kind:
+            total_winnings += self.player_credits * VideoPokerBaseWinnings.four_of_a_kind
+        elif evaluation_val == HandEvaluation.full_house:
+            total_winnings += self.player_credits * VideoPokerBaseWinnings.full_house
+        elif evaluation_val == HandEvaluation.flush:
+            total_winnings += self.player_credits * VideoPokerBaseWinnings.flush
+        elif evaluation_val == HandEvaluation.straight:
+            total_winnings += self.player_credits * VideoPokerBaseWinnings.straight
+        elif evaluation_val == HandEvaluation.three_of_a_kind:
+            total_winnings += self.player_credits * VideoPokerBaseWinnings.three_of_a_kind
+        elif evaluation_val == HandEvaluation.two_pair:
+            total_winnings += self.player_credits * VideoPokerBaseWinnings.two_pairs
+        elif evaluation_val == HandEvaluation.pair:  # TODO: implement knowing 'jacks or better'.
+            total_winnings += self.player_credits * VideoPokerBaseWinnings.jacks_or_better
+
+        return total_winnings
+
 
 # from card_games import CardPlayer Deck, Card,PokerRules as PR, VideoPokerConsoleRenderer as VR, VideoPoker as VP
 
@@ -496,11 +534,14 @@ class SQLiteDB(object):
     @staticmethod
     def get_player(name):
         name = (name, )
-        select_sql = "SELECT * FROM Players WHERE FirstName=?"
+        select_sql = "SELECT * FROM Players WHERE FirstName=? COLLATE NOCASE"
         player_raw = SQLiteDB.__execute_select__(select_sql, name)
         if player_raw:
             player = CardPlayer(player_raw[0], player_raw[1], player_raw[2])
             return player
+
+    @staticmethod
+    def save_player(player):
         pass
 
     @staticmethod
