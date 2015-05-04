@@ -373,6 +373,10 @@ class Game(object):
     def new_game(self, player_credits):
         pass
 
+    @abstractmethod
+    def next_turn(self):
+        pass
+
 
 class VideoPoker(Game):
     def __init__(self, player, min_credits, max_credits):
@@ -388,9 +392,18 @@ class VideoPoker(Game):
             card.held = False
         super().player.give_cards(hand)
         VideoPokerConsoleRenderer.show_cards(super().player.hand)
+        self.next_turn()
 
     def next_turn(self):
-        self.current_turn = 2
+        if self.current_turn is not 2:
+            holds = input("\nWhich cards would you like to hold?\n")
+            chars = list(holds)
+            char_set = set(chars)
+            for index in char_set:
+                if str.isdigit(index) and 0 < int(index) < 6:
+                    super().player.hand[int(index) - 1].held = True
+            VideoPokerConsoleRenderer.show_cards(super().player.hand)
+            self.current_turn = 2
 
 
 # from card_games import CardPlayer Deck, Card,PokerRules as PR, VideoPokerConsoleRenderer as VR, VideoPoker as VP
@@ -411,8 +424,10 @@ class Session(object):
         name = input("Welcome! What's your name? ")
         player = SQLiteDB.get_player(name)
         game = VideoPoker(player, 1, 5)
-        poker_loop = VideoPokerLoop(game)
-        poker_loop.initialize()
+        game.new_game(5)
+
+        # poker_loop = VideoPokerLoop(game)
+        # poker_loop.initialize()
 
     @staticmethod
     def __execute_game_loop__(game_loop):
@@ -444,13 +459,16 @@ class VideoPokerLoop(GameLoop):
 
     def initialize(self):
         self.__greet__()
+
         if self.game.player.gil < self.game.min_credits:
             print("Unfortunately you don't have enough credits to play :/")
+            return False
+
         self.game.new_game(5)
         pass
 
     def process_user_input(self):
-        pass
+        return True
 
     def __greet__(self):
         print(str.format("Welcome to Video Poker, {0}!\nYou have {1} credits.", self.game.player.name,
@@ -488,6 +506,11 @@ class SQLiteDB(object):
             cur.execute(select_sql, params)
             return cur.fetchone()
         pass
+
+
+########################################################################################################################
+# PARSER
+########################################################################################################################
 
 
 ########################################################################################################################
