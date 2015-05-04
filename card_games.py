@@ -397,14 +397,19 @@ class VideoPoker(Game):
     def next_turn(self):
         if self.current_turn is not 2:
             holds = input("\nWhich cards would you like to hold?\n")
-            chars = list(holds)
-            char_set = set(chars)
-            for index in char_set:
-                if str.isdigit(index) and 0 < int(index) < 6:
-                    super().player.hand[int(index) - 1].held = True
+            int_holds = Parser.get_sorted_unique_numbers(holds, 5)
+            for card_index in int_holds:
+                super().player.hand[int(card_index) - 1].held = True
+            for index, card in enumerate(super().player.hand):
+                if not card.held:
+                    super().player.hand[index] = Deck.deal(self.deck, 1)[0]
             VideoPokerConsoleRenderer.show_cards(super().player.hand)
+            evaluation = PokerRules.evaluate_hand(super().player.hand)
+            self._calculate_winnings_(evaluation)
             self.current_turn = 2
 
+    def _calculate_winnings_(self, evaluation):
+        pass
 
 # from card_games import CardPlayer Deck, Card,PokerRules as PR, VideoPokerConsoleRenderer as VR, VideoPoker as VP
 
@@ -511,6 +516,18 @@ class SQLiteDB(object):
 ########################################################################################################################
 # PARSER
 ########################################################################################################################
+
+
+class Parser:
+    @staticmethod
+    def get_sorted_unique_numbers(string, max_num=9, reverse=False):
+        """This method returns only unique single digit characters. For example if the input string is 'AB9019' then
+        [0, 1, 9] will be returned. """
+        chars = list(string)
+        char_nums = [int(x) for x in chars if str.isdigit(x) and int(x) <= max_num]
+        sorted_char_nums = sorted(char_nums, reverse=reverse)
+        unique_char_nums = list(set(sorted_char_nums))
+        return unique_char_nums
 
 
 ########################################################################################################################
