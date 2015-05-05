@@ -193,7 +193,7 @@ class CardPlayer(Player):
 
 class HandEvaluation:
     high_card, pair, two_pair, three_of_a_kind, straight, flush, full_house, four_of_a_kind, straight_flush, \
-    royal_flush = range(0, 10)
+        royal_flush = range(0, 10)
 
 
 # Here we go... at the moment I'm piecing this whole thing together and not sure which direction I want to head and
@@ -203,7 +203,11 @@ class HandEvaluation:
 # case, no matter how many cards or what variation of poker we're playing - well, instead we're stuck with a dreaded
 #
 # TODO: Make PokerRules suck less and offer cooler features.
-
+# TODO: Implement high card/low card in PokerRules, which will return the high and low cards involved in a particular
+#   hand. For example, a two pair hand like KS-KC-9H-9S-2D will either return a high and low card involved in the hand
+#   such as KS-9D, or (perhaps more cleanly), return suit values in a tuple like (Suit.king, suit.nine), which can be
+#   used to compare hands and determine a winner, or perform tests in video poker games like checking for jacks or
+#   better.
 
 class PokerRules:
     @staticmethod
@@ -495,7 +499,7 @@ class GameLoop(object):
     def process_user_input(self):
         pass
 
-
+#TODO: Either flesh out or get rid of VideoPokerLoop
 class VideoPokerLoop(GameLoop):
     def __init__(self, game):
         super().__init__(game)
