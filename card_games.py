@@ -1,8 +1,9 @@
 __author__ = 'steven synan'
 
-import random
 from itertools import groupby
 from abc import ABCMeta, abstractmethod
+import random
+import collections
 import sqlite3 as sql
 
 
@@ -229,7 +230,7 @@ class PokerRules:
         elif PokerRules.__is_two_pair__(hand):
             return HandEvaluation.two_pair, 'two pair'
         elif PokerRules.__is_pair__(hand):
-            return HandEvaluation.pair, 'pair'
+            return HandEvaluation.pair, 'pair', PokerRules.__is_pair__(hand)[1]  # seriously...? Refactor imminent!
         else:
             high_card = PokerRules.__get_high_card__(hand)
             output = str.format('high card ({})', str(high_card))
@@ -297,7 +298,9 @@ class PokerRules:
     def __is_pair__(cards):
         rank_groups = PokerRules.__get_sorted_rank_groups__(cards)
         if rank_groups and rank_groups[0] is 2:
-            return True
+            ranks = [x.rank for x in cards]
+            pair_rank = [x for x, y in collections.Counter(ranks).items() if y > 1]
+            return True, pair_rank[0]
         return False
 
     @staticmethod
@@ -400,11 +403,14 @@ class VideoPoker(Game):
     def new_game(self, player_credits):
         self.current_turn = 1
         self.player_credits = player_credits
+        super().player.gil -= player_credits
         self.deck = Deck.build()
         hand = Deck.deal(self.deck, 5)
         for card in hand:
             card.held = False
+        super().player.hand = []
         super().player.give_cards(hand)
+        print(str.format("\n{}'s credits: {}", super().player.name, super().player.gil))
         VideoPokerConsoleRenderer.show_cards(super().player.hand)
         self.next_turn()
 
@@ -422,9 +428,11 @@ class VideoPoker(Game):
             winnings = self.__calculate_winnings__(evaluation)
             if winnings > 0:
                 print(str.format('\n{}\nYou win {} credits.', evaluation[1], winnings))
-                super().player.gil = winnings
-            else:
-                super().player.gil -= self.player_credits
+                super().player.gil += winnings
+            confirm = Parser.get_user_confirmation("Play again? (y/n): ")
+            if confirm:
+                self.new_game(5)
+
             self.current_turn = 2
 
     def __calculate_winnings__(self, evaluation):
@@ -447,7 +455,7 @@ class VideoPoker(Game):
             total_winnings += self.player_credits * VideoPokerBaseWinnings.three_of_a_kind
         elif evaluation_val == HandEvaluation.two_pair:
             total_winnings += self.player_credits * VideoPokerBaseWinnings.two_pairs
-        elif evaluation_val == HandEvaluation.pair:  # TODO: implement knowing 'jacks or better'.
+        elif evaluation_val == HandEvaluation.pair and evaluation[2] >= Rank.jack:
             total_winnings += self.player_credits * VideoPokerBaseWinnings.jacks_or_better
 
         return total_winnings
@@ -499,7 +507,8 @@ class GameLoop(object):
     def process_user_input(self):
         pass
 
-#TODO: Either flesh out or get rid of VideoPokerLoop
+
+# TODO: Either flesh out or get rid of VideoPokerLoop
 class VideoPokerLoop(GameLoop):
     def __init__(self, game):
         super().__init__(game)
@@ -573,6 +582,15 @@ class Parser:
         sorted_char_nums = sorted(char_nums, reverse=reverse)
         unique_char_nums = list(set(sorted_char_nums))
         return unique_char_nums
+
+    # TODO: Finish fleshing out Parser.get_user_confirmation.
+    @staticmethod
+    def get_user_confirmation(message):
+        result = input(message)
+        if result.lower().startswith('y'):
+            return True
+        else:
+            return False
 
 
 ########################################################################################################################
